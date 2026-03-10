@@ -3,4 +3,4 @@ yfinance
 pandas
 transformers
 torch
-matplotlib
+plotly
