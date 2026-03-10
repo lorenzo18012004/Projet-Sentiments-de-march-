@@ -46,7 +46,12 @@ if analyze_btn:
                 
                 # Traitement de chaque actualité
                 for item in news:
-                    title = item.get('title', '')
+                    # Gestion des différentes versions de la structure renvoyée par yfinance
+                    if 'content' in item and 'title' in item['content']:
+                        title = item['content'].get('title', '')
+                    else:
+                        title = item.get('title', '')
+                        
                     if not title:
                         continue
                         
@@ -71,7 +76,21 @@ if analyze_btn:
                     # Convertir les résultats en un DataFrame Pandas propre
                     df = pd.DataFrame(results)
                     
-                    st.subheader("📊 Résultats Détaillés")
+                    st.subheader("📊 Résultats Détaillés par article")
+                    
+                    # Calcul du sentiment général
+                    sentiment_counts = df['Sentiment'].value_counts()
+                    general_sentiment = sentiment_counts.idxmax()
+                    
+                    # Affichage du sentiment général de manière bien visible
+                    if general_sentiment == 'Positif':
+                        st.success(f"### Sentiment Général : Positif 🟢\nLa tendance globale des actualités est à l'optimisme.")
+                    elif general_sentiment == 'Négatif':
+                        st.error(f"### Sentiment Général : Négatif 🔴\nLa tendance globale des actualités est au pessimisme.")
+                    else:
+                        st.info(f"### Sentiment Général : Neutre ⚪\nLes actualités sont globalement factuelles ou sans tendance claire.")
+                        
+                    st.write("") # Espace
                     
                     # Colorisation des cellules du DataFrame selon le sentiment
                     def color_sentiment(val):
