@@ -53,13 +53,20 @@ if analyze_btn:
         
         with st.spinner(f"Récupération des marchés pour {ticker}..."):
             hist = stock.history(period=period)
-            info = stock.info
+            
+            # Gestion du RateLimitError très fréquent sur Streamlit Cloud pour stock.info
+            try:
+                info = stock.info
+                company_name = info.get('longName', ticker)
+                currency = info.get('currency', 'USD')
+            except Exception:
+                # Si Yahoo bloque (Rate Limit), on utilise le ticker par défaut
+                company_name = ticker
+                currency = "USD"
             
         if hist.empty:
             st.error(f"❌ Impossible de trouver l'historique pour le symbole **{ticker}**. Assurez-vous que le ticker est reconnu par Yahoo Finance.")
         else:
-            company_name = info.get('longName', ticker)
-            currency = info.get('currency', 'USD')
             
             # --- KPIs boursiers ---
             current_price = hist['Close'].iloc[-1]
