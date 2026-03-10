@@ -12,9 +12,15 @@ st.set_page_config(
 )
 
 st.title("📈 Analyse de Sentiment Financier avec FinBERT")
+
 st.markdown("""
-Cette application récupère les dernières actualités financières d'une action via **Yahoo Finance** 
-et analyse le sentiment des titres avec le modèle d'Intelligence Artificielle **FinBERT** d'Hugging Face.
+### 🎯 Décodez les émotions du marché boursier en temps réel.
+Cette application est une démonstration d'**Analyse de Sentiment Financier**, un outil puissant utilisé par les investisseurs quantitatifs pour automatiser la lecture des actualités et dégager une tendance de marché (haussière ou baissière).
+
+**Le processus est simple :**
+1. L'application se connecte à **Yahoo Finance** pour récupérer le flux des dernières actualités d'une action ciblée.
+2. Chaque titre d'article est ensuite analysé par le modèle d'Intelligence Artificielle de pointe **FinBERT** (développé par Prosus AI), qui a été spécifiquement entraîné sur un corpus énorme de documents financiers.
+3. Le modèle classe instantanément le sentiment de l'article (**Positif**, **Négatif** ou **Neutre**) et nous fournit son indice de confiance.
 """)
 
 # L'utilisation du cache permet de ne charger le modèle qu'une seule fois
@@ -46,15 +52,41 @@ if analyze_btn:
                 
                 # Traitement de chaque actualité
                 for item in news:
-                    # Gestion des différentes versions de la structure renvoyée par yfinance
-                    if 'content' in item and 'title' in item['content']:
-                        title = item['content'].get('title', '')
+                    # Extraction robuste des données avec gestion des différents formats de yfinance
+                    title = ""
+                    date = ""
+                    link = ""
+                    
+                    if 'content' in item and isinstance(item['content'], dict):
+                        content = item['content']
+                        title = content.get('title', '')
+                        date = content.get('pubDate', '')
+                        click_url = content.get('clickThroughUrl', {})
+                        if isinstance(click_url, dict):
+                            link = click_url.get('url', '')
                     else:
                         title = item.get('title', '')
+                        date = item.get('providerPublishTime', '')
+                        link = item.get('link', '')
                         
                     if not title:
                         continue
                         
+                    # Formatage de la date pour un affichage propre
+                    formatted_date = date
+                    if isinstance(date, (int, float)):
+                        try:
+                            # Unix timestamp
+                            formatted_date = pd.to_datetime(date, unit='s').strftime('%Y-%m-%d %H:%M')
+                        except:
+                            formatted_date = str(date)
+                    elif isinstance(date, str) and 'T' in date:
+                        try:
+                            # ISO format
+                            formatted_date = pd.to_datetime(date).strftime('%Y-%m-%d %H:%M')
+                        except:
+                            formatted_date = str(date)
+
                     # Analyse du sentiment via le pipeline FinBERT
                     analysis = sentiment_pipeline(title)[0]
                     
@@ -65,9 +97,11 @@ if analyze_btn:
                     sentiment_fr = {"positive": "Positif", "negative": "Négatif", "neutral": "Neutre"}.get(sentiment.lower(), sentiment)
                     
                     results.append({
+                        "Date": formatted_date,
                         "Titre de l'actualité": title,
+                        "Lien": link,
                         "Sentiment": sentiment_fr,
-                        "Confiance": f"{confidence * 100:.2f} %"
+                        "Confiance": f"{confidence * 100:.1f}%"
                     })
                 
                 if results:
@@ -101,12 +135,19 @@ if analyze_btn:
                         else:
                             return 'color: #6c757d; font-weight: bold;'
                     
-                    # Affichage du tableau interactif
+                    # Affichage du tableau interactif avec configuration des colonnes
                     st.dataframe(
-                        df.style.applymap(color_sentiment, subset=['Sentiment']), 
+                        df.style.map(color_sentiment, subset=['Sentiment']), 
+                        column_config={
+                            "Date": st.column_config.DatetimeColumn("Date de publication", format="DD/MM/YYYY HH:mm"),
+                            "Lien": st.column_config.LinkColumn("Accéder à l'article"),
+                        },
+                        hide_index=True,
                         use_container_width=True,
                         height=250
                     )
+                    
+                    st.divider()
                     
                     # --- Section Graphique ---
                     st.subheader("📉 Répartition des Sentiments")
